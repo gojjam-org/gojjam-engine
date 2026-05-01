@@ -1,0 +1,63 @@
+[project]
+name = "gojjam"
+version = "0.1.0"
+description = "A decoupled, SQL-first data engine for ingestion and transformation."
+readme = "README.md"
+authors = [
+    { name = "Bisrat Awoke" }
+]
+dependencies = [
+    "requests",
+    "duckdb",
+    "pyyaml",
+    "pydantic",
+    "python-dotenv",
+    "pyarrow",
+    "sqlglot",
+    "pandas",
+    "sqlalchemy",
+    "psycopg2",
+    "click"
+]
+
+[project.optional-dependencies]
+dev = [
+    "build"
+]
+
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gojjam*"]
+
+[tool.setuptools.package-data]
+"*" = ["**/*.mako", "**/*.sql", "**/*.yml"]
+
+[project.scripts]
+gojjam = "gojjam.cli.main:cli"
+
+[project.entry-points."gojjam.ingest.extractors"]
+http = "gojjam.ingest.extractors.http_extractor:HTTPExtractor"
+postgres = "gojjam.ingest.extractors.postgres_extractor:PostgresExtractor"
+duckdb = "gojjam.ingest.extractors.duckdb_extractor:DuckDbExtractor"
+csv = "gojjam.ingest.extractors.csv_extractor:CSVExtractor"
+
+
+[project.entry-points."gojjam.ingest.loaders"]
+postgres = "gojjam.ingest.loaders.postgres_loader:PostgresLoader"
+terminal = "gojjam.ingest.loaders.terminal_loader:TerminalLoader"
+
+[project.entry-points."gojjam.transform.engines"]
+postgres = "gojjam.transform.engine.postgres_transform_engine:PostgresTransformEngine"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ['py313']
+include = '\.pyi?$'
