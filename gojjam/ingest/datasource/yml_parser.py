@@ -14,10 +14,11 @@ class DataSource(BaseModel):
     host: Optional[str] = None
     port: Optional[int] = None
     database: Optional[str] = None
-    # schema: Optional[str]= None
     schema_: Optional[str] = Field(default=None,alias="schema")
     path: Optional[str] =None
-
+    root_folder: Optional[str] = None
+    azure_blob_storage_connection_string: Optional[str] = None
+    container_name: Optional[str] = None
 
 class Config(BaseModel):
     version: str
