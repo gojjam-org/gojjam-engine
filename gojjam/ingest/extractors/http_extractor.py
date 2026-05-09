@@ -1,21 +1,43 @@
 import requests
 import pyarrow as pa
 import pandas as pd
-from requests.auth import HTTPBasicAuth
+from requests.auth import HTTPBasicAuth,HTTPDigestAuth,AuthBase
 from gojjam.ingest.extractors.base_extract import BaseExtractor
 
+
+class JWTAuth(AuthBase):
+    def __init__(self,token:str):
+        self.token = token
+    def __call__(self, r):
+        token_str = str(self.token)
+        prefix = "Bearer "
+        auth_value = token_str if token_str.startswith(prefix) else f"{prefix}{token_str}"
+        r.headers["Authorization"] = auth_value
+        return r
+    
 class HTTPExtractor(BaseExtractor):
+
+    def _get_auth_strategy(self, source_cfg):
+       
+        auth_type = getattr(source_cfg, "auth_type", None)
+        auth_map = {
+            "basic": lambda cfg: HTTPBasicAuth(cfg.username, cfg.password),
+            "digest": lambda cfg: HTTPDigestAuth(cfg.username, cfg.password),
+            "jwt": lambda cfg: JWTAuth(cfg.api_key) 
+        }
+        strategy = auth_map.get(auth_type)
+        return strategy(source_cfg) if strategy else None
+
     def extract(self):
         source_cfg = self.model_info["source_config"]
-        auth = None
-        
-        if getattr(source_cfg, "auth_type", None) == "basic":
-            auth = HTTPBasicAuth(source_cfg.username, source_cfg.password)
+        auth_obj = self._get_auth_strategy(source_cfg)
 
         try:
-            response = requests.get(str(source_cfg.endpoint), auth=auth)
-            response.raise_for_status()
-            full_data = response.json()
+            with requests.Session() as session:
+                session.auth = auth_obj
+                response = session.get(str(source_cfg.endpoint))
+                response.raise_for_status()
+                full_data = response.json()
         except Exception as e:
             print(f"❌ API Request Failed: {e}")
             return

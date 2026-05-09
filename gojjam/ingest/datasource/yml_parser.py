@@ -8,7 +8,7 @@ class DataSource(BaseModel):
     type: str
     endpoint: Optional[HttpUrl] = None
     auth_type: Optional[str] = "bearer"
-    api_key: Optional[SecretStr] = None
+    api_key: Optional[str] = None
     username: Optional[str] =""
     password: Optional[str] =""
     host: Optional[str] = None
