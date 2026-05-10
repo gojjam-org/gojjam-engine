@@ -56,6 +56,10 @@ terminal = "gojjam.ingest.loaders.terminal_loader:TerminalLoader"
 [project.entry-points."gojjam.transform.engines"]
 postgres = "gojjam.transform.engine.postgres_transform_engine:PostgresTransformEngine"
 
+
+[project.entry-points."gojjam.calculated_model"]
+postgres = "gojjam.calculated_model.postgres_calculated_model:PostgresCalculator"
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
