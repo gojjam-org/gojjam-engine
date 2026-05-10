@@ -20,6 +20,12 @@ class DataSource(BaseModel):
     azure_blob_storage_connection_string: Optional[str] = None
     container_name: Optional[str] = None
 
+    # s3 config
+    bucket_name: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    region:Optional[str] = None
+
 class Config(BaseModel):
     version: str
     sources: List[DataSource]

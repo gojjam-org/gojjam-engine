@@ -21,13 +21,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-azure = [
-    "azure-storage-blob"
-]
+aws = ["boto3"]
 
-dev = [
-    "build"
-]
+azure = ["azure-storage-blob"]
+
+dev = ["build"]
 
 
 [tool.setuptools]
@@ -49,7 +47,7 @@ postgres = "gojjam.ingest.extractors.postgres_extractor:PostgresExtractor"
 duckdb = "gojjam.ingest.extractors.duckdb_extractor:DuckDbExtractor"
 csv = "gojjam.ingest.extractors.csv_extractor:CSVExtractor"
 azure_blob_storage="gojjam.ingest.extractors.azure_blob_storage_extractor:AzureBlobStorageExtractor"
-
+s3 = "gojjam.ingest.extractors.s3_extractor:S3Extractor"
 
 [project.entry-points."gojjam.ingest.loaders"]
 postgres = "gojjam.ingest.loaders.postgres_loader:PostgresLoader"
