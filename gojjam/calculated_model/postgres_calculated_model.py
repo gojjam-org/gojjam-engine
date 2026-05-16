@@ -1,4 +1,5 @@
 import logging
+import pandas as pd  # Added pandas import
 import psycopg2
 from psycopg2 import errors
 from gojjam.calculated_model.base_calculated_model import BaseCalculatedModel
@@ -21,20 +22,21 @@ class PostgresCalculator(BaseCalculatedModel):
             )
         return self.conn
 
-    def calculate(self, query, cursor):
+    def calculate(self, query, cursor) -> pd.DataFrame:
         logging.info(f"Executing calculation for: {cursor.calculated_model_name}")
         
         conn = self.connect()
-        db_cursor = conn.cursor()
         
         try:
-            db_cursor.execute(query)
-            res = db_cursor.fetchone()
+            # Use pandas to execute the query and return a DataFrame
+            df = pd.read_sql_query(query, conn)
             
-            if res is None or res[0] is None:
-                return cursor.inital_value
+            # If the dataframe is empty, handle initialization logic
+            if df.empty:
+                # Returns an empty DataFrame with the expected columns or the initial value
+                return pd.DataFrame([cursor.inital_value], columns=[cursor.calculated_model_column_name or "result"])
             
-            return res[0]
+            return df
 
         except psycopg2.errors.UndefinedTable:
             conn.rollback()
@@ -46,12 +48,14 @@ class PostgresCalculator(BaseCalculatedModel):
             logging.warning(f"Table '{table}' not found. Initializing via CTAS with value: {init_val}")
             
             try:
-                create_as_query = f"CREATE TABLE {table} AS SELECT %s AS {column};"
+                # We still use a standard cursor for DDL (CREATE TABLE)
+                with conn.cursor() as db_cursor:
+                    create_as_query = f"CREATE TABLE {table} AS SELECT %s AS {column};"
+                    db_cursor.execute(create_as_query, (init_val,))
+                    conn.commit()
                 
-                db_cursor.execute(create_as_query, (init_val,))
-                conn.commit()
-                
-                return init_val
+                # Return the initial value as a single-row DataFrame
+                return pd.DataFrame([{column: init_val}])
                 
             except Exception as create_error:
                 conn.rollback()
@@ -62,6 +66,7 @@ class PostgresCalculator(BaseCalculatedModel):
             conn.rollback()
             logging.error(f"Postgres calculation failed: {e}")
             raise e
-            
+        
         finally:
-            db_cursor.close()
+            if self.conn:
+                self.conn.close()

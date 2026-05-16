@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 from sqlglot import exp, parse_one
 from gojjam.ingest.engine.estl import estl
@@ -55,29 +54,6 @@ class GojjamIngestEngine:
             print(f"🚀 Processing Source: {source_name} ({len(matching_models)} models)")
 
             for model in matching_models:
-                # INC = PERM
-                    # Check if model need a calc model
-                    # If so find calc model with the needed name
-                    # Run the sql query to get the calc model
-                    # Attached result to the dict
-                    # pass the value into estl
-              
-                if getattr(source_cfg,"cursor"):
-                    cursor = source_cfg.cursor
-                    calculator = CalculatedModelFactory.get_calculated_model(cursor.db_config)                    
-                    query = self.get_calculated_model_query(cursor.calculated_model_folder_path,cursor.calculated_model_name)
-                  
-                    current_page = calculator.calculate(query,cursor)
-                
-                    if source_cfg.type == 'http':
-                        base_endpoint = str(source_cfg.endpoint).rstrip("/")
-                        formatted_url = cursor.value_location.format(
-                            endpoint=base_endpoint,
-                            value=current_page
-                        )
-
-                        source_cfg.endpoint = formatted_url
-                        print(f"Target URL: {formatted_url}")
                 model["source_config"] = source_cfg
                 if source_cfg.type in ["postgres", "duckdb"] and model["namespace"]:
                     model["sql_code"] = self.resolve_namespace(model["sql_code"], model["namespace"],source_cfg.schema,source_cfg.type)
