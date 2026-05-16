@@ -1,10 +1,8 @@
-from pathlib import Path
 from sqlglot import exp, parse_one
-from gojjam.ingest.engine.estl import estl
+from gojjam.ingest.engines.ingest_engine_factory import IngestEngineFactory
 from gojjam.ingest.sink.yml_parser import get_sink_config
 from gojjam.ingest.model.model_loader import get_sql_models
 from gojjam.ingest.datasource.yml_parser import get_config, get_source_map
-from gojjam.calculated_model.calculated_model_factory import CalculatedModelFactory
 
 class GojjamIngestEngine:
     def __init__(self, datasource_path, sink_path):
@@ -22,21 +20,6 @@ class GojjamIngestEngine:
                 
         return expression.sql(dialect=database_type)
     
-
-    def get_calculated_model_query(self, folder_path, file_name):
-
-        if not file_name.endswith(".sql"):
-            file_name = f"{file_name}.sql"
-
-        file_path = Path(folder_path) / file_name
-        
-        if not file_path.exists():
-            raise FileNotFoundError(f"Query file not found at: {file_path}")
-    
-        with open(file_path, "r", encoding="utf-8") as f:
-            query = f.read().strip()
-            
-        return query
     
     def run_all(self):
         for source_name, source_cfg in self.sources.items():
@@ -59,4 +42,6 @@ class GojjamIngestEngine:
                     model["sql_code"] = self.resolve_namespace(model["sql_code"], model["namespace"],source_cfg.schema,source_cfg.type)
               
                 
-                estl(model)
+                engine = IngestEngineFactory.get_ingest_engine(model)
+                engine.run()
+    

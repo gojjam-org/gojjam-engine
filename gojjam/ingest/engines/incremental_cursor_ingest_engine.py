@@ -1,0 +1,37 @@
+import logging
+import duckdb
+import pyarrow as pa
+from gojjam.ingest.engines.base_ingest_engine import BaseIngestEngine
+from gojjam.ingest.engines.cursor_ingest_engine import CursorIngestEngine
+
+class IncrementalCursorIngestEngine(BaseIngestEngine,CursorIngestEngine):
+
+    def __init__(self, model):
+        BaseIngestEngine.__init__(self, model)
+        CursorIngestEngine.__init__(self, model)
+
+    def run(self):
+     
+        query = self.get_calculated_model_query(self.cursor.calculated_model_folder_path, self.cursor.calculated_model_name)
+        current_result = self.calculator.calculate(query, self.cursor)
+       
+        start_val = current_result.at[0, self.cursor.calculated_model_column_name]
+        
+        con = duckdb.connect(database=':memory:')
+        base_table = self.model.get("base_table_name")
+        first_chunk = True
+
+        for extraction_result in self.extractor.extract(start_val):
+            if len(extraction_result) > 0:
+                con.register(base_table, extraction_result)
+                result_reader = con.execute(self.model["sql_code"]).fetch_record_batch()
+                
+                for batch in result_reader:
+                    chunk_table = pa.Table.from_batches([batch])
+                    success = self.loader.load(chunk_table, is_first_chunk=first_chunk)
+                    first_chunk = False
+                    
+                    if success:
+                        self.update_cursor(current_result)
+            else:
+                logging.info("No data returned for incremental pass.")

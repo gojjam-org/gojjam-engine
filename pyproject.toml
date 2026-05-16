@@ -41,6 +41,11 @@ include = ["gojjam*"]
 [project.scripts]
 gojjam = "gojjam.cli.main:cli"
 
+[project.entry-points."gojjam.ingest.engines"]
+inc = "gojjam.ingest.engines.incremental_cursor_ingest_engine:IncrementalCursorIngestEngine"
+sync = "gojjam.ingest.engines.sync_cursor_ingest_engine:SyncCursorIngestEngine"
+default = "gojjam.ingest.engines.default_ingest_engine:DefaultIngestEngine"
+
 [project.entry-points."gojjam.ingest.extractors"]
 http = "gojjam.ingest.extractors.http_extractor:HTTPExtractor"
 postgres = "gojjam.ingest.extractors.postgres_extractor:PostgresExtractor"
