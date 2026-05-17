@@ -31,6 +31,7 @@ def get_sql_models(sink_configs: list):
                         "namespace": namespace,
                         "sink_info": {
                             "sink_name": sink['name'],
+                            "write_mode": sink['write_mode'],
                             "type": sink['type'],
                             "schema": sink['config'].get('schema'),
                             "target_table": sql_file.stem,

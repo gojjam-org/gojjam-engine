@@ -1,12 +1,13 @@
 import yaml
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional,Literal
 
 class SinkEntry(BaseModel):
     name: str
     type: str
     source_folder: str
+    write_mode: Optional[Literal['APPEND','OVERWRITE']]
     config: Dict[str, Any] = Field(default_factory=dict)
 
 class SinkConfig(BaseModel):
