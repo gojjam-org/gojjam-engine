@@ -48,6 +48,7 @@ class DataSource(BaseModel):
     name: str
     type: str
     endpoint: Optional[Union[HttpUrl, str]] = None
+    http_method: Optional[Literal['POST','GET','PUT']] = None
     auth_type: Optional[str] = "bearer"
     api_key: Optional[str] = None
     username: Optional[str] = ""
@@ -128,8 +129,7 @@ def get_config(
 
                 resolved_db = match.config.model_copy()
                 resolved_db.type = match.type 
-                
-                # Replace the ConfigRef object with the actual DBConn object
+        
                 source.cursor.db_config = resolved_db
 
     return config

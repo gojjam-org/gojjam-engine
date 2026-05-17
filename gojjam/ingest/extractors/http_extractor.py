@@ -52,9 +52,10 @@ class HTTPExtractor(BaseExtractor):
         return urlunparse(url_parts)
 
     def _execute_and_yield(self, session, method, url, **kwargs):
-        """Centralized request execution and DataFrame conversion."""
+        logging.info(f"Request: {method} {url}")
         response = session.request(method, url, **kwargs)
         response.raise_for_status()
+        
         full_data = response.json()
         if isinstance(full_data, dict):
             key = list(full_data.keys())[0] if len(full_data) == 1 else None
@@ -64,49 +65,62 @@ class HTTPExtractor(BaseExtractor):
 
         batch_size = 1000
         for i in range(0, len(data_list), batch_size):
-            batch_df = pd.DataFrame(data_list[i : i + batch_size])
-            yield pa.Table.from_pandas(batch_df)
+            yield pa.Table.from_pandas(pd.DataFrame(data_list[i : i + batch_size]))
 
-    def _strategy_query(self, session, source_cfg, cursor, current_page):
+
+    def _strategy_query(self, session, source_cfg, cursor, current_page, http_method):
         base_endpoint = str(source_cfg.endpoint).rstrip("/")
         url = self.format_url_from_dataframe(
             template_str=cursor.value_location.location,
             df=current_page,
             endpoint=base_endpoint
         )
-        yield from self._execute_and_yield(session, "GET", url)
+        yield from self._execute_and_yield(session, http_method, url)
 
-    def _strategy_body(self, session, source_cfg, cursor, current_page):
+    def _strategy_body(self, session, source_cfg, cursor, current_page, http_method):
         row_data = current_page.iloc[0].to_dict()
         payload = {
             loc_key: row_data.get(col_name) 
             for loc_key, col_name in cursor.value_location.location.items()
         }
         yield from self._execute_and_yield(
-            session, "GET", str(source_cfg.endpoint), json=payload
+            session, http_method, str(source_cfg.endpoint), json=payload
         )
 
-    def _strategy_none(self, session, source_cfg, *args):
-        yield from self._execute_and_yield(session, "GET", str(source_cfg.endpoint))
+    def _strategy_none(self, session, source_cfg, cursor, current_page, http_method):
+        yield from self._execute_and_yield(session, http_method, str(source_cfg.endpoint))
+
 
     def extract(self, current_page: pd.DataFrame = None):
         source_cfg = self.model_info["source_config"]
+        http_method = getattr(source_cfg, "http_method", "GET").upper()
         auth_obj = self._get_auth_strategy(source_cfg)
+
         cursor = getattr(source_cfg, "cursor", None)
+
+        cursor_type = getattr(cursor.value_location, "type", None) if cursor else None
         strategy_map = {
             "QUERY": self._strategy_query,
-            "BODY": self._strategy_body
+            "BODY": self._strategy_body,
+            None: self._strategy_none  
         }
-        
-        handler = strategy_map.get(getattr(cursor.value_location, "type", None)) if cursor else self._strategy_none
-        
+
+        handler = strategy_map.get(cursor_type)
+
         if not handler:
-            logging.error(f"Unsupported cursor type: {cursor.value_location.type}")
+            logging.error(f"No valid strategy for cursor type: {cursor_type}")
             return
 
         with requests.Session() as session:
             session.auth = auth_obj
             try:
-                yield from handler(session, source_cfg, cursor, current_page)
+                yield from handler(
+                    session=session, 
+                    source_cfg=source_cfg, 
+                    cursor=cursor, 
+                    current_page=current_page, 
+                    http_method=http_method
+                )
             except Exception as e:
                 logging.error(f"❌ Extraction Failed: {e}")
+                raise e
