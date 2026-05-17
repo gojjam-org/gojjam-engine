@@ -1,6 +1,6 @@
 
 import click
-from gojjam.ingest.main import GojjamIngestEngine
+from gojjam.ingest.main import GojjamIngestRunner
 from gojjam.transform.main import GojjamTransformEngine
 
 @click.command()
@@ -28,7 +28,7 @@ def run(sources, sinks, transform_cfg, run_mode):
     if run_mode in ['all', 'ingest']:
         click.secho("\n📥 [Stage 1/2] Starting Gojjam-Ingest...", fg="cyan", bold=True)
         try:
-            runner = GojjamIngestEngine(datasource_path=sources, sink_path=sinks)
+            runner = GojjamIngestRunner(datasource_path=sources, sink_path=sinks)
             runner.run_all()
             click.secho("✅ Ingestion complete.", fg="green")
         except Exception as e:

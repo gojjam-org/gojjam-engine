@@ -1,4 +1,5 @@
 import duckdb
+import logging
 import pyarrow as pa
 from gojjam.ingest.engines.base_ingest_engine import BaseIngestEngine
 from gojjam.ingest.engines.cursor_ingest_engine import CursorIngestEngine
@@ -14,15 +15,12 @@ class SyncCursorIngestEngine(BaseIngestEngine,CursorIngestEngine):
         while controller:
             query = self.get_calculated_model_query(self.cursor.calculated_model_folder_path, self.cursor.calculated_model_name)
             current_result = self.calculator.calculate(query, self.cursor)
-            
-            start_val = current_result.at[0, self.cursor.calculated_model_column_name]
-            
             con = duckdb.connect(database=':memory:')
             base_table = self.model.get("base_table_name")
             first_chunk = True
             data_processed_in_loop = False
 
-            for extraction_result in self.extractor.extract(start_val):
+            for extraction_result in self.extractor.extract(current_result):
                 if len(extraction_result) > 0:
                     data_processed_in_loop = True
                     con.register(base_table, extraction_result)

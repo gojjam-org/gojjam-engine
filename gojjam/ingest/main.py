@@ -4,7 +4,7 @@ from gojjam.ingest.sink.yml_parser import get_sink_config
 from gojjam.ingest.model.model_loader import get_sql_models
 from gojjam.ingest.datasource.yml_parser import get_config, get_source_map
 
-class GojjamIngestEngine:
+class GojjamIngestRunner:
     def __init__(self, datasource_path, sink_path):
         self.sources = get_source_map(get_config(datasource_path,sink_path)) 
         self.sinks = get_sink_config(sink_path)

@@ -1,7 +1,7 @@
 import logging
-import pandas as pd  # Added pandas import
+import pandas as pd
 import psycopg2
-from psycopg2 import errors
+from psycopg2 import sql
 from gojjam.calculated_model.base_calculated_model import BaseCalculatedModel
 
 class PostgresCalculator(BaseCalculatedModel):
@@ -26,44 +26,68 @@ class PostgresCalculator(BaseCalculatedModel):
         logging.info(f"Executing calculation for: {cursor.calculated_model_name}")
         
         conn = self.connect()
+    
+        fallback_data = {
+            col.name: col.initial_value
+            for col in cursor.calculated_model_column_names
+        }
         
         try:
-            # Use pandas to execute the query and return a DataFrame
-            df = pd.read_sql_query(query, conn)
-            
-            # If the dataframe is empty, handle initialization logic
+           
+            with conn.cursor() as db_cursor:
+                db_cursor.execute(query)
+                rows = db_cursor.fetchall()
+                colnames = [desc[0] for desc in db_cursor.description]
+                df = pd.DataFrame(rows, columns=colnames)
+                
             if df.empty:
-                # Returns an empty DataFrame with the expected columns or the initial value
-                return pd.DataFrame([cursor.inital_value], columns=[cursor.calculated_model_column_name or "result"])
+                logging.warning(f"Query for {cursor.calculated_model_name} returned no rows. Using fallback.")
+                return pd.DataFrame([fallback_data])
             
             return df
 
         except psycopg2.errors.UndefinedTable:
             conn.rollback()
             
-            table = cursor.calculated_model_name
-            column = cursor.calculated_model_column_name or "current_page"
-            init_val = cursor.inital_value
-
-            logging.warning(f"Table '{table}' not found. Initializing via CTAS with value: {init_val}")
+            table_name = cursor.calculated_model_name
             
             try:
-                # We still use a standard cursor for DDL (CREATE TABLE)
                 with conn.cursor() as db_cursor:
-                    create_as_query = f"CREATE TABLE {table} AS SELECT %s AS {column};"
-                    db_cursor.execute(create_as_query, (init_val,))
+             
+                    select_parts = []
+                    initial_values = []
+                    
+                    for col in cursor.calculated_model_column_names:
+    
+
+                        select_parts.append(
+                            sql.SQL("{} AS {}").format(
+                                sql.Placeholder(), 
+                                sql.Identifier(col.name)
+                            )
+                        )
+                        initial_values.append(col.initial_value)
+                    
+                    create_query = sql.SQL("CREATE TABLE {} AS SELECT ").format(
+                        sql.Identifier(table_name)
+                    ) + sql.SQL(", ").join(select_parts)
+                    
+                   
+                    db_cursor.execute(create_query, initial_values)
                     conn.commit()
                 
-                # Return the initial value as a single-row DataFrame
-                return pd.DataFrame([{column: init_val}])
+              
+                return pd.DataFrame([fallback_data])
                 
             except Exception as create_error:
                 conn.rollback()
-                logging.error(f"Failed to dynamically initialize table {table}: {create_error}")
+                logging.error(f"Failed to dynamically initialize table {table_name}: {create_error}")
+                logging.error(create_error)
                 raise create_error
 
         except Exception as e:
-            conn.rollback()
+            if self.conn:
+                self.conn.rollback()
             logging.error(f"Postgres calculation failed: {e}")
             raise e
         

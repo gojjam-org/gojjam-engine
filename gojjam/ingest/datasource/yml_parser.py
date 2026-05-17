@@ -2,7 +2,7 @@ import yaml
 from pathlib import Path
 from pydantic import BaseModel, HttpUrl, Field, ValidationError, AnyUrl
 from typing import List, Optional, Any, Union,Literal
-import  logging
+
 class ConfigRef(BaseModel):
     ref: str
 
@@ -28,14 +28,18 @@ class SinkConfig(BaseModel):
 
 class CursorLocation(BaseModel):
     type: Optional[Literal["QUERY","PATH","BODY"]] = None
-    location: Optional["str"] = None
+    location: Optional[Any] = None
+
+class CursorModelColumnName(BaseModel):
+    name: Optional[str] = None
+    initial_value:Optional[Any] = None
 
 class Cursor(BaseModel):
     cursor_type: Optional[Literal['INC','SYNC']] = None
     state: Optional[Literal['STATEFULL','STATELESS']] = None
     calculated_model_name: Optional[str] = None
     calculated_model_folder_path: Optional[str] = None
-    calculated_model_column_name: Optional[str] = None
+    calculated_model_column_names: List[CursorModelColumnName]
     value_location: Optional[CursorLocation] = None
     inital_value: Optional[Any] = None
     db_config: Optional[Union[ConfigRef, DBConn, Any]] = None

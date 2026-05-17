@@ -11,17 +11,14 @@ class IncrementalCursorIngestEngine(BaseIngestEngine,CursorIngestEngine):
         CursorIngestEngine.__init__(self, model)
 
     def run(self):
-     
         query = self.get_calculated_model_query(self.cursor.calculated_model_folder_path, self.cursor.calculated_model_name)
         current_result = self.calculator.calculate(query, self.cursor)
-       
-        start_val = current_result.at[0, self.cursor.calculated_model_column_name]
-        
+
         con = duckdb.connect(database=':memory:')
         base_table = self.model.get("base_table_name")
         first_chunk = True
 
-        for extraction_result in self.extractor.extract(start_val):
+        for extraction_result in self.extractor.extract(current_result):
             if len(extraction_result) > 0:
                 con.register(base_table, extraction_result)
                 result_reader = con.execute(self.model["sql_code"]).fetch_record_batch()
